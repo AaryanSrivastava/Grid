@@ -31,49 +31,55 @@ void acceleratorInit(void)
   world_rank=0; 
   if ((localRankStr = getenv(ENV_RANK_OMPI   )) != NULL) { world_rank = atoi(localRankStr);}
   if ((localRankStr = getenv(ENV_RANK_MVAPICH)) != NULL) { world_rank = atoi(localRankStr);}
-  if ((localRankStr = getenv(ENV_RANK_SLURM  )) != NULL) { world_rank = atoi(localRankStr);}
+  if ((localRankStr = getenv(ENV_RANK_SLURM  )) != NULL) {
+    int slurm_rank = atoi(localRankStr);
+    if (world_rank != 0 && world_rank != slurm_rank) {
+      std::cout << "Both SLURM and OMPI ranks detected and differ - " << slurm_rank << " != " << world_rank << "! Preferring the OMPI rank." << std::endl;
+    } else {
+      world_rank = slurm_rank;
+    }
+  }
   // We extract the local rank initialization using an environment variable
   if ((localRankStr = getenv(ENV_LOCAL_RANK_OMPI)) != NULL) {
     if (!world_rank)
-      printf("OPENMPI detected\n");
+      std::cout << "OPENMPI detected" << std::endl;
     rank = atoi(localRankStr);		
   } else if ((localRankStr = getenv(ENV_LOCAL_RANK_MVAPICH)) != NULL) {
     if (!world_rank)
-      printf("MVAPICH detected\n");
+      std::cout << "MVAPICH detected" << std::endl;
     rank = atoi(localRankStr);		
   } else if ((localRankStr = getenv(ENV_LOCAL_RANK_SLURM)) != NULL) {
     if (!world_rank)
-      printf("SLURM detected\n");
+      std::cout << "SLURM detected" << std::endl;
     rank = atoi(localRankStr);		
   } else { 
     if (!world_rank)
-      printf("MPI version is unknown - bad things may happen\n");
+      std::cout << "MPI version is unknown - bad things may happen" << std::endl;
   }
 
   size_t totalDeviceMem=0;
   for (int i = 0; i < nDevices; i++) {
 
-#define GPU_PROP_FMT(canMapHostMemory,FMT)     printf("AcceleratorCudaInit[%d]:   " #canMapHostMemory ": " FMT" \n",rank,prop.canMapHostMemory);
-#define GPU_PROP(canMapHostMemory)             GPU_PROP_FMT(canMapHostMemory,"%d");
+#define GPU_PROP_FMT(__name__,__value__)     std::cout << "AcceleratorCudaInit[" << rank << "]:   " #__name__ ": " << __value__ << std::endl;
+#define GPU_PROP(__name__)             GPU_PROP_FMT(__name__, prop.__name__);
     cudaGetDeviceProperties(&gpu_props[i], i);
     cudaDeviceProp prop; 
     prop = gpu_props[i];
     totalDeviceMem = prop.totalGlobalMem;
     if ( world_rank == 0) {
       if ( i==rank ) {
-	printf("AcceleratorCudaInit[%d]: ========================\n",rank);
-	printf("AcceleratorCudaInit[%d]: Device Number    : %d\n", rank,i);
-	printf("AcceleratorCudaInit[%d]: ========================\n",rank);
-	printf("AcceleratorCudaInit[%d]: Device identifier: %s\n",rank, prop.name);
+	std::cout << "AcceleratorCudaInit[" << rank << "]: ========================" << std::endl;
+	GPU_PROP_FMT(Device Number, i);
+	std::cout << "AcceleratorCudaInit[" << rank << "]: ========================" << std::endl;
+	GPU_PROP_FMT(Device identifier, prop.name);
 
-
-	GPU_PROP_FMT(totalGlobalMem,"%zu");
+	GPU_PROP(totalGlobalMem);
 	GPU_PROP(managedMemory);
 	GPU_PROP(isMultiGpuBoard);
 	GPU_PROP(warpSize);
 	GPU_PROP(pciBusID);
 	GPU_PROP(pciDeviceID);
- 	printf("AcceleratorCudaInit[%d]: maxGridSize (%d,%d,%d)\n",rank,prop.maxGridSize[0],prop.maxGridSize[1],prop.maxGridSize[2]);
+	std::cout << "AcceleratorCudaInit[" << rank << "]: maxGridSize (" << prop.maxGridSize[0] << "," << prop.maxGridSize[1] << "," << prop.maxGridSize[2] << ")" << std::endl;
       }
       //      GPU_PROP(unifiedAddressing);
       //      GPU_PROP(l2CacheSize);
@@ -89,16 +95,16 @@ void acceleratorInit(void)
   int device = 0;
   // IBM Jsrun makes cuda Device numbering screwy and not match rank
   if ( world_rank == 0 ) {
-    printf("AcceleratorCudaInit: using default device \n");
-    printf("AcceleratorCudaInit: assume user either uses\n");
-    printf("AcceleratorCudaInit: a) IBM jsrun, or \n");
-    printf("AcceleratorCudaInit: b) invokes through a wrapping script to set CUDA_VISIBLE_DEVICES, UCX_NET_DEVICES, and numa binding \n");
-    printf("AcceleratorCudaInit: Configure options --enable-setdevice=no \n");
+    std::cout << "AcceleratorCudaInit: using default device" << std::endl;
+    std::cout << "AcceleratorCudaInit: assume user either uses" << std::endl;
+    std::cout << "AcceleratorCudaInit: a) IBM jsrun, or " << std::endl;
+    std::cout << "AcceleratorCudaInit: b) invokes through a wrapping script to set CUDA_VISIBLE_DEVICES, UCX_NET_DEVICES, and numa binding " << std::endl;
+    std::cout << "AcceleratorCudaInit: Configure options --enable-setdevice=no " << std::endl;
   }
 #else
   int device = rank;
-  printf("AcceleratorCudaInit: rank %d setting device to node rank %d\n",world_rank,rank);
-  printf("AcceleratorCudaInit: Configure options --enable-setdevice=yes \n");
+  std::cout << "AcceleratorCudaInit: rank " << world_rank << " setting device to node rank " << rank << std::endl;
+  std::cout << "AcceleratorCudaInit: Configure options --enable-setdevice=yes " << std::endl;
 #endif
 
   cudaSetDevice(device);
@@ -108,10 +114,10 @@ void acceleratorInit(void)
   char busid[len];
   if( rank == world_rank ) { 
     cudaDeviceGetPCIBusId(busid, len, device);
-    printf("local rank %d device %d bus id: %s\n", rank, device, busid);
+    std::cout << "local rank " << rank << " device " << device << " bus id: " << busid << std::endl;
   }
 
-  if ( world_rank == 0 )  printf("AcceleratorCudaInit: ================================================\n");
+  if ( world_rank == 0 )  std::cout << "AcceleratorCudaInit: ================================================" << std::endl;
 }
 #endif
 
@@ -146,20 +152,20 @@ void acceleratorInit(void)
   size_t totalDeviceMem=0;
   for (int i = 0; i < nDevices; i++) {
 
-#define GPU_PROP_FMT(canMapHostMemory,FMT)     printf("AcceleratorHipInit:   " #canMapHostMemory ": " FMT" \n",prop.canMapHostMemory);
-#define GPU_PROP(canMapHostMemory)             GPU_PROP_FMT(canMapHostMemory,"%d");
+#define GPU_PROP_FMT(__name__, __value__)     std::cout << "AcceleratorHipInit:   " #__name__ ": " << __value__ << std::endl;
+#define GPU_PROP(__name__)             GPU_PROP_FMT(__name__, prop.__name__);
     
     discard = hipGetDeviceProperties(&gpu_props[i], i);
     hipDeviceProp_t prop; 
     prop = gpu_props[i];
     totalDeviceMem = prop.totalGlobalMem;
     if ( world_rank == 0) {
-      printf("AcceleratorHipInit: ========================\n");
-      printf("AcceleratorHipInit: Device Number    : %d\n", i);
-      printf("AcceleratorHipInit: ========================\n");
-      printf("AcceleratorHipInit: Device identifier: %s\n", prop.name);
+      std::cout << "AcceleratorHipInit[" << rank << ": ========================" << std::endl;
+      GPU_PROP_FMT(Device Number, i);
+      std::cout << "AcceleratorHipInit[" << rank << ": ========================" << std::endl;
+      GPU_PROP_FMT(Device identifier, prop.name);
 
-      GPU_PROP_FMT(totalGlobalMem,"%lu");
+      GPU_PROP(totalGlobalMem);
       //      GPU_PROP(managedMemory);
       GPU_PROP(isMultiGpuBoard);
       GPU_PROP(warpSize);
@@ -174,15 +180,15 @@ void acceleratorInit(void)
 
 #ifdef GRID_DEFAULT_GPU
   if ( world_rank == 0 ) {
-    printf("AcceleratorHipInit: using default device \n");
-    printf("AcceleratorHipInit: assume user or srun sets ROCR_VISIBLE_DEVICES and numa binding \n");
-    printf("AcceleratorHipInit: Configure options --enable-setdevice=no \n");
+    std::cout << "AcceleratorHipInit: using default device " << std::endl;
+    std::cout << "AcceleratorHipInit: assume user or srun sets ROCR_VISIBLE_DEVICES and numa binding " << std::endl;
+    std::cout << "AcceleratorHipInit: Configure options --enable-setdevice=no " << std::endl;
   }
   int device = 0;
 #else
   if ( world_rank == 0 ) {
-    printf("AcceleratorHipInit: rank %d setting device to node rank %d\n",world_rank,rank);
-    printf("AcceleratorHipInit: Configure options --enable-setdevice=yes \n");
+    std::cout << "AcceleratorHipInit: rank " << world_rank << " setting device to node rank " << rank << std::endl;
+    std::cout << "AcceleratorHipInit: Configure options --enable-setdevice=yes " << std::endl;
   }
   int device = rank;
 #endif
@@ -193,9 +199,9 @@ void acceleratorInit(void)
   char busid[len];
   if( rank == world_rank ) { 
     discard = hipDeviceGetPCIBusId(busid, len, device);
-    printf("local rank %d device %d bus id: %s\n", rank, device, busid);
+    std::cout  << "local rank " << rank << " device " << device << " bus id: " << busid << std::endl;
   }
-  if ( world_rank == 0 )  printf("AcceleratorHipInit: ================================================\n");
+  if ( world_rank == 0 )  std::cout << "AcceleratorHipInit: ================================================" << std::endl;
 }
 #endif
 
@@ -240,22 +246,18 @@ void acceleratorInit(void)
 
   char hostname[HOST_NAME_MAX+1];
   gethostname(hostname, HOST_NAME_MAX+1);
-  if ( rank==0 ) printf("AcceleratorSyclInit world_rank %d is host %s \n",world_rank,hostname);
+  if ( rank==0 ) std::cout << "AcceleratorSyclInit world_rank " << world_rank << " is host " << hostname << std::endl;
 
   auto devices = sycl::device::get_devices();
   for(int d = 0;d<devices.size();d++){
 
-#define GPU_PROP_STR(prop) \
-    printf("AcceleratorSyclInit:   " #prop ": %s \n",devices[d].get_info<sycl::info::device::prop>().c_str());
+#define GPU_PROP(__prop__) \
+    std::cout << "AcceleratorSyclInit:   " #__prop__ ": " << devices[d].get_info<sycl::info::device::__prop__>() << std::endl;
 
-#define GPU_PROP_FMT(prop,FMT) \
-    printf("AcceleratorSyclInit:   " #prop ": " FMT" \n",devices[d].get_info<sycl::info::device::prop>());
-
-#define GPU_PROP(prop)             GPU_PROP_FMT(prop,"%ld");
     if ( world_rank == 0) {
 
-      GPU_PROP_STR(vendor);
-      GPU_PROP_STR(version);
+      GPU_PROP(vendor);
+      GPU_PROP(version);
     //    GPU_PROP_STR(device_type);
     /*
     GPU_PROP(max_compute_units);
@@ -277,8 +279,8 @@ void acceleratorInit(void)
   }
   if ( world_rank == 0 ) {
     auto name = theGridAccelerator->get_device().get_info<sycl::info::device::name>();
-    printf("AcceleratorSyclInit: Selected device is %s\n",name.c_str());
-    printf("AcceleratorSyclInit: ================================================\n");
+    std::cout << "AcceleratorSyclInit: Selected device is " << name << std::endl;
+    std::cout << "AcceleratorSyclInit: ================================================" << std::endl;
   }
 }
 #endif

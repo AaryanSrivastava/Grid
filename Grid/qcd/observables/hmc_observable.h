@@ -39,11 +39,16 @@ class HmcObservable
  *  is used to run the computation of
  *  on-the-fly observables.
  *
- *  Expects:
+ *  @details Expects:
  *   an integer traj : trajectory number
  *   a reference to ConfigurationBase : the gauge field configuration
  *   a reference to a serial RNG
  *   a reference to a parallel RNG
+ *   a bool accept (optional):
+ *     whether the proposed update was accepted (true) or rejected (false).
+ *     This will always be supplied by Grid;
+ *     overloads omitting it are present for backward compatibility.
+ *     New code should override the versions taking the accept parameter.
  */
 {
  public:

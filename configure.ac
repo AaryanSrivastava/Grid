@@ -363,7 +363,7 @@ if test "${ac_IPP}x" != "nox"; then
                    [AC_MSG_ERROR("Intel IPP enabled but library not found")])
 fi
 
-if test "$DX_FLAG_doc" = '0'; then
+if test "${DX_FLAG_doc}x" != '1x'; then
     AC_SEARCH_LIBS([__gmpf_init], [gmp],
                    [AC_SEARCH_LIBS([mpfr_init], [mpfr],
                                    [AC_DEFINE([HAVE_LIBMPFR], [1],

@@ -363,15 +363,14 @@ if test "${ac_IPP}x" != "nox"; then
                    [AC_MSG_ERROR("Intel IPP enabled but library not found")])
 fi
 
-if test "${DX_FLAG_doc}x" != '1x'; then
-    AC_SEARCH_LIBS([__gmpf_init], [gmp],
-                   [AC_SEARCH_LIBS([mpfr_init], [mpfr],
-                                   [AC_DEFINE([HAVE_LIBMPFR], [1],
-                                              [Define to 1 if you have the `MPFR' library])]
-                                   [have_mpfr=true], [AC_MSG_ERROR([MPFR library not found])])]
-                   [AC_DEFINE([HAVE_LIBGMP], [1], [Define to 1 if you have the `GMP' library])]
-                   [have_gmp=true])
-fi
+AC_SEARCH_LIBS([__gmpf_init], [gmp],
+               [AC_SEARCH_LIBS([mpfr_init], [mpfr],
+                               [AC_DEFINE([HAVE_LIBMPFR], [1],
+                                          [Define to 1 if you have the `MPFR' library])
+                                AC_DEFINE([HAVE_LIBGMP], [1], [Define to 1 if you have the `GMP' library])
+                                have_mpfr=true
+                                have_gmp=true
+                                ])])
 
 if test "${ac_LAPACK}x" != "nox"; then
     AC_SEARCH_LIBS([LAPACKE_sbdsdc], [lapack], [],

@@ -32,7 +32,25 @@ directory
 NAMESPACE_BEGIN(Grid);
 
 template <class Field>
-class HmcObservable {
+class HmcObservable 
+/*! @brief HMC Observable class,
+ *  HMC observables inherit the method 
+ *  TrajectoryComplete from here, which
+ *  is used to run the computation of
+ *  on-the-fly observables.
+ *
+ *  @details Expects:
+ *   an integer traj : trajectory number
+ *   a reference to ConfigurationBase : the gauge field configuration
+ *   a reference to a serial RNG
+ *   a reference to a parallel RNG
+ *   a bool accept (optional):
+ *     whether the proposed update was accepted (true) or rejected (false).
+ *     This will always be supplied by Grid;
+ *     overloads omitting it are present for backward compatibility.
+ *     New code should override the versions taking the accept parameter.
+ */
+{
  public:
   virtual void TrajectoryComplete(int traj,
                                   ConfigurationBase<Field> &SmartConfig,
@@ -45,6 +63,25 @@ class HmcObservable {
                                   Field &U,
                                   GridSerialRNG &sRNG,
                                   GridParallelRNG &pRNG) = 0;
+
+  // allow backward compatibility with current observables that do not have 
+  // acceptance argument
+  virtual void TrajectoryComplete(int traj,
+                                  ConfigurationBase<Field> &SmartConfig,
+                                  GridSerialRNG &sRNG,
+                                  GridParallelRNG &pRNG, 
+                                  bool accept)
+  {
+    TrajectoryComplete(traj,SmartConfig,sRNG,pRNG); // Unsmeared observable
+  };
+  virtual void TrajectoryComplete(int traj, 
+                                  Field &U,
+                                  GridSerialRNG &sRNG,
+                                  GridParallelRNG &pRNG,
+                                  bool accept) 
+  {
+    TrajectoryComplete(traj, U, sRNG, pRNG);
+  };
 };
 
 NAMESPACE_END(Grid);

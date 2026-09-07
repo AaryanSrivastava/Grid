@@ -6,5 +6,4 @@
 #include <Grid/qcd/smearing/GaugeConfiguration.h>
 #include <Grid/qcd/smearing/WilsonFlow.h>
 #include <Grid/qcd/smearing/HISQSmearing.h>
-#include <Grid/qcd/smearing/WuppertalSmearing.h>
 
